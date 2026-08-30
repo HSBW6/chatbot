@@ -117,9 +117,12 @@ class ChatGUI:
         bottom = tk.Frame(root)
         bottom.pack(fill=tk.X, padx=10, pady=(0, 10))
 
-        self.entry = tk.Entry(bottom, font=("Microsoft YaHei", 11))
+        self.entry = tk.Text(bottom, height=2, wrap=tk.WORD,
+                             font=("Microsoft YaHei", 11))
         self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.entry.bind("<Return>", lambda e: self.send())
+        self.entry.bind("<Return>", self.on_enter)
+        self.entry.bind("<Control-Return>", self.on_ctrl_enter)
+
 
         self.send_btn = tk.Button(bottom, text="发送", command=self.send,
                                   font=("Microsoft YaHei", 11))
@@ -154,14 +157,26 @@ class ChatGUI:
         self.chat_area.config(state="disabled")
         self.chat_area.see(tk.END)  # 自动滚到底部
 
+    def on_enter(self, event):
+        """Enter 发送消息；return "break" 阻止 Text 默认插入换行。"""
+        self.send()
+        return "break"
+
+    def on_ctrl_enter(self, event):
+        """Ctrl+Enter 手动插入换行。"""
+        self.entry.insert(tk.INSERT, "\n")
+        return "break"
+
+
 
     def send(self):
         if self.busy:
             return
-        text = self.entry.get().strip()
+        text = self.entry.get("1.0", tk.END).strip()
         if not text:
             return
-        self.entry.delete(0, tk.END)
+        self.entry.delete("1.0", tk.END)
+
         self.append_chat("user", f"你: {text}")
         self.busy = True
         self.send_btn.config(state="disabled")
