@@ -1,0 +1,23 @@
+# ===== 密钥 - 绝对不能上传 =====
+.env
+.env.*
+
+# ===== Python 虚拟环境 =====
+.venv/
+venv/
+
+# ===== Python 缓存 =====
+__pycache__/
+*.py[cod]
+
+# ===== IDE / 编辑器 =====
+.vscode/
+.idea/
+
+# ===== 系统文件 =====
+Thumbs.db
+Desktop.ini
+
+# ===== 本地备份 =====
+chatbot_backup.py
+*_backup.py
