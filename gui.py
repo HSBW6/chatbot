@@ -103,6 +103,8 @@ class ChatGUI:
         self.chat_area.tag_config("ai", foreground="#000000")
         self.chat_area.tag_config("tool", foreground="#808080")
         self.chat_area.tag_config("error", foreground="#d93025")
+        self.chat_area.tag_config("thinking", foreground="#808080")  # 新增：思考提示用灰色
+
 
         # 底部输入区
         bottom = tk.Frame(root)
@@ -115,6 +117,11 @@ class ChatGUI:
         self.send_btn = tk.Button(bottom, text="发送", command=self.send,
                                   font=("Microsoft YaHei", 11))
         self.send_btn.pack(side=tk.RIGHT, padx=(8, 0))
+                # 新增：清空对话按钮（放在发送按钮左边）
+        self.clear_btn = tk.Button(bottom, text="清空", command=self.clear_chat,
+                                   font=("Microsoft YaHei", 11))
+        self.clear_btn.pack(side=tk.RIGHT, padx=(8, 0))
+
 
         # 消息队列 + 定时轮询（线程安全的关键）
         self.msg_queue = queue.Queue()
@@ -123,6 +130,7 @@ class ChatGUI:
         # 对话历史（system 开头）
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         self.busy = False  # 防止连点发送导致并发
+        
 
     # ---------- 界面操作 ----------
     def append_chat(self, tag, text):
@@ -141,12 +149,40 @@ class ChatGUI:
         self.append_chat("user", f"你: {text}")
         self.busy = True
         self.send_btn.config(state="disabled")
+        # ===== 新增：显示"AI 思考中..."（用 tag 标记，删除更精准） =====
+        self.chat_area.config(state="normal")
+        self.chat_area.insert(tk.END, "AI 思考中...\n", ("thinking", "thinking_marker"))
+        self.chat_area.config(state="disabled")
+
+        # ===== 新增：发送后自动聚焦输入框，不用再点鼠标 =====
+        self.entry.focus_set()
         # 开线程跑对话，避免界面卡死
         threading.Thread(
             target=chat_worker,
             args=(text, self.messages, self.msg_queue),
             daemon=True,
         ).start()
+    def clear_chat(self):
+        """清空聊天区，重置对话历史（相当于新开一段对话）。"""
+        if self.busy:
+            return  # 请求还没结束不允许清空
+        self.chat_area.config(state="normal")
+        self.chat_area.delete("1.0", tk.END)
+        self.chat_area.config(state="disabled")
+        self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        self.thinking_start = None
+        self.thinking_end = None
+        self.entry.focus_set()
+
+    def remove_thinking(self):
+        """删除"AI 思考中..."提示（用 tag 精确定位，不受隐藏换行影响）。"""
+        ranges = self.chat_area.tag_ranges("thinking_marker")
+        if ranges:
+            self.chat_area.config(state="normal")
+            self.chat_area.delete(ranges[0], ranges[1])
+            self.chat_area.tag_delete("thinking_marker")
+            self.chat_area.config(state="disabled")
+
 
     def poll_queue(self):
         """每隔 100ms 检查后台线程有没有新消息，有就显示。"""
@@ -156,10 +192,12 @@ class ChatGUI:
                 if kind == "tool":
                     self.append_chat("tool", text)
                 elif kind == "ai":
+                    self.remove_thinking()  # 新增：AI 回复到了，删掉"思考中"
                     self.append_chat("ai", f"AI: {text}")
                     self.busy = False
                     self.send_btn.config(state="normal")
                 elif kind == "error":
+                    self.remove_thinking()  # 新增：报错也要删掉"思考中"
                     self.append_chat("error", text)
                     self.busy = False
                     self.send_btn.config(state="normal")
