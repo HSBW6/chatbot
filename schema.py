@@ -55,5 +55,51 @@ TOOLS = [
             }
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "save_progress",
+            "description": "保存用户当前学习到的ROS知识点或进度，比如用户说'我学到话题了'就调用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "当前学到的主题，比如 话题Topic"
+                    }
+                },
+                "required": ["topic"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_progress",
+            "description": "查询用户之前保存的学习进度，回答'我学到哪了''上次学到什么'时调用",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+        {
+        "type": "function",
+        "function": {
+            "name": "ros_cheatsheet",
+            "description": "查询ROS2常用命令速查表，比如用户问 ros2 topic、ros2 node、ros2 launch 等命令怎么用时调用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "想查的主题，可选：topic / node / launch / pkg / run / colcon / param / service"
+                    }
+                },
+                "required": ["topic"]
+            }
+        }
+    }
+
 
 ]
