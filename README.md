@@ -1,3 +1,14 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: 110f755b5028546ed56b284ce71f603e_044f5a30a46811f192a2525400287e28
+    ReservedCode1: zBD7fOi6JpK7nZ0W+cb4KERzddYnxC+qcv0EVyuJ/IOHPzwOmWQaQuT/+d4G0GarngnNF+M8l/1V1/r3HAajBg7iAp3YynGnlLXhBcwK8geRwGeWQHnnClrKbArlrwtNP/4IzooMOjeBMnYrjZ0dVnSGRNFV7/lP0XpGDdHdaViHjVdjsgvGijbLbOM=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: 110f755b5028546ed56b284ce71f603e_044f5a30a46811f192a2525400287e28
+    ReservedCode2: zBD7fOi6JpK7nZ0W+cb4KERzddYnxC+qcv0EVyuJ/IOHPzwOmWQaQuT/+d4G0GarngnNF+M8l/1V1/r3HAajBg7iAp3YynGnlLXhBcwK8geRwGeWQHnnClrKbArlrwtNP/4IzooMOjeBMnYrjZ0dVnSGRNFV7/lP0XpGDdHdaViHjVdjsgvGijbLbOM=
+---
+
 # DeepSeek ROS 学习助手
 
 基于 DeepSeek API 的 ROS 学习助手，支持多轮对话与工具调用。
@@ -112,3 +123,4 @@ chatbot/
 ## 免责声明
 
 本项目的天气数据来自免费公开服务 [wttr.in](https://wttr.in)，仅供学习参考，不保证实时准确。
+*（内容由AI生成，仅供参考）*
