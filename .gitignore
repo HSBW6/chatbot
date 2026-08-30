@@ -21,3 +21,6 @@ Desktop.ini
 # ===== 本地备份 =====
 chatbot_backup.py
 *_backup.py
+
+# ===== 运行时数据 =====
+progress.json
