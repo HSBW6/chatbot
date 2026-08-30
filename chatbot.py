@@ -13,6 +13,7 @@
 import json
 import os
 import sys
+from pathlib import Path
 from typing import List
 
 from openai import OpenAI
@@ -21,19 +22,24 @@ from schema import TOOLS
 from tools import TOOL_MAP
 
 # ============ 可配置项 ============
+BASE_DIR = Path(__file__).resolve().parent  # 项目根目录（.env、progress.json 都相对它定位）
 BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-chat"  # 通用对话模型；想用推理模型改为 deepseek-reasoner
 MAX_HISTORY_TURNS = 10  # 最多保留的对话轮数，超出后丢弃最旧的轮次
+MAX_TOOL_ROUNDS = 5  # 单轮对话最多允许的连续工具调用次数，防止模型异常时死循环
 SYSTEM_PROMPT = "你是一个ROS学习助手，帮助用户学习ROS/ROS2与机器人编程。用户告诉你学习进度时用save_progress保存；用户问'学到哪了'时用get_progress查询；用户问ROS命令怎么用时用ros_cheatsheet查询。回答简洁，用中文。"
 
 # ================================
 
 
-def load_env_file(path: str = ".env") -> None:
+def load_env_file(path=None) -> None:
     """极简 .env 读取：每行 KEY=VALUE，自动去除 BOM 与引号，已存在的环境变量优先。
 
     不依赖 python-dotenv，Windows 记事本/PowerShell 产生的 UTF-8 BOM 也能正确处理。
+    不传 path 时默认读取项目根目录（脚本所在目录）的 .env，与启动时的当前目录无关。
     """
+    if path is None:
+        path = BASE_DIR / ".env"
     try:
         with open(path, "r", encoding="utf-8-sig") as f:
             for line in f:
@@ -125,7 +131,7 @@ def main() -> None:
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         print("未找到 DEEPSEEK_API_KEY。")
-        print("请检查 D:\\Deepseek\\chatbot 目录下是否有 .env 文件，内容为：")
+        print(f"请检查 {BASE_DIR} 目录下是否有 .env 文件，内容为：")
         print("    DEEPSEEK_API_KEY=sk-你的key")
         print("注意：文件名必须是 .env（不是 .env.txt），等号两边不要有空格。")
         sys.exit(1)
@@ -150,9 +156,11 @@ def main() -> None:
 
         messages.append({"role": "user", "content": user_input})
         messages = trim_history(messages)
+        user_idx = len(messages) - 1  # 记录用户消息位置，出错时回滚本轮全部消息
 
         try:
             # 工具调用循环：模型可能要连续调多次工具，直到给出最终回答
+            tool_rounds = 0
             while True:
                 stream = client.chat.completions.create(
                     model=MODEL,
@@ -171,6 +179,10 @@ def main() -> None:
                 if tool_calls:
                     # 模型要调工具：执行并回填结果，继续下一轮推理
                     process_tool_calls(messages, tool_calls)
+                    tool_rounds += 1
+                    if tool_rounds >= MAX_TOOL_ROUNDS:
+                        print(f"\n  [提示] 工具调用已达上限（{MAX_TOOL_ROUNDS} 次），停止本轮调用")
+                        break
                     continue
 
                 # 没有工具调用：正常输出回复
@@ -181,7 +193,7 @@ def main() -> None:
                 break
         except Exception as exc:  # 网络、鉴权、余额不足等错误
             print(f"\n请求失败: {exc}")
-            messages.pop()  # 撤掉无人应答的用户消息，避免污染历史
+            del messages[user_idx:]  # 撤掉本轮无人应答的消息与工具痕迹，避免污染历史
 
 
 if __name__ == "__main__":
