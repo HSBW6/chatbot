@@ -38,4 +38,22 @@ TOOLS = [
             }
         }
     },
+        {
+        "type": "function",
+        "function": {
+            "name": "read_local_file",
+            "description": "读取本地文本文件的内容，输入文件的完整路径",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "文件的完整路径，比如 D:/test.txt"
+                    }
+                },
+                "required": ["path"]
+            }
+        }
+    },
+
 ]

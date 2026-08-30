@@ -35,9 +35,35 @@ def calculate(expression: str) -> str:
     except Exception as e:
         return f"计算出错: {e}"
 
+def read_local_file(path: str) -> str:
+    """读取本地文本文件内容（限制大小，避免刷屏）。"""
+    import os
+    try:
+        if not os.path.exists(path):
+            return f"文件不存在: {path}"
+        if os.path.isdir(path):
+            return f"这是一个文件夹，不是文件: {path}"
+        size = os.path.getsize(path)
+        if size > 200_000:
+            return f"文件太大（{size} 字节），超过 200KB 限制，请换个小文件"
+        # 先试 UTF-8，失败再试 GBK（Windows 中文文件常见）
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            with open(path, "r", encoding="gbk", errors="replace") as f:
+                content = f.read()
+        if len(content) > 5000:
+            content = content[:5000] + f"\n...[内容过长已截断，文件共 {len(content)} 字符]"
+        return content
+    except Exception as e:
+        return f"读取文件出错: {e}"
+
+
 
 # 工具注册表：模型返回的工具名 -> 实际执行的函数
 TOOL_MAP = {
     "get_weather": get_weather,
     "calculate": calculate,
+    "read_local_file": read_local_file,
 }
