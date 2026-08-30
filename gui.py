@@ -1,8 +1,8 @@
 """DeepSeek 多轮对话机器人 - 简单 GUI 版（tkinter）
 
 运行方式:
-    cd D:\Deepseek\chatbot
-    .\.venv\Scripts\activate
+    cd D:\\Deepseek\\chatbot
+    .\\.venv\\Scripts\\activate
     python gui.py
 
 依赖: 只用 Python 自带的 tkinter，无需额外安装。
@@ -25,6 +25,7 @@ from chatbot import (assemble_tool_calls, build_assistant_message,
 # ============ 可配置项 ============
 BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-chat"
+MAX_TOOL_ROUNDS = 5  # 单轮对话最多允许的连续工具调用次数，防止模型异常时死循环
 SYSTEM_PROMPT = "你是一个乐于助人的助手。"
 # ================================
 
@@ -57,8 +58,10 @@ def chat_worker(user_text, messages, msg_queue):
 
     messages.append({"role": "user", "content": user_text})
     messages = trim_history(messages)
+    user_idx = len(messages) - 1  # 记录用户消息位置，出错时回滚本轮全部消息
 
     try:
+        tool_rounds = 0
         while True:
             stream = client.chat.completions.create(
                 model=MODEL,
@@ -76,6 +79,11 @@ def chat_worker(user_text, messages, msg_queue):
 
             if tool_calls:
                 run_tool_and_feedback(messages, tool_calls, msg_queue)
+                tool_rounds += 1
+                if tool_rounds >= MAX_TOOL_ROUNDS:
+                    msg_queue.put(("tool", f"[提示] 工具调用已达上限（{MAX_TOOL_ROUNDS} 次），停止本轮调用"))
+                    msg_queue.put(("ai_done", ""))
+                    break
                 continue
 
             reply = "".join(content_parts).strip()
@@ -90,6 +98,7 @@ def chat_worker(user_text, messages, msg_queue):
 
 
     except Exception as exc:
+        del messages[user_idx:]  # 撤掉本轮无人应答的消息与工具痕迹，避免污染历史
         msg_queue.put(("error", f"请求失败: {exc}"))
 
 
@@ -201,8 +210,6 @@ class ChatGUI:
         self.chat_area.delete("1.0", tk.END)
         self.chat_area.config(state="disabled")
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-        self.thinking_start = None
-        self.thinking_end = None
         self.entry.focus_set()
 
     def remove_thinking(self):

@@ -6,6 +6,11 @@
 3. 在下方 TOOL_MAP 里登记"名字 -> 函数"。
 """
 
+from pathlib import Path
+
+# 项目根目录（以本文件所在位置定位，不依赖启动时的当前目录）
+BASE_DIR = Path(__file__).resolve().parent
+
 
 def get_weather(city: str) -> str:
     """调用 wttr.in 获取真实天气（免费，无需 key）。"""
@@ -35,10 +40,27 @@ def calculate(expression: str) -> str:
     except Exception as e:
         return f"计算出错: {e}"
 
+# 敏感路径片段：路径中任意一级命中即拒绝读取（防止模型被诱导读取密钥/隐私文件）
+_SENSITIVE_PARTS = (
+    ".env", ".git", ".ssh", "credentials", "password", "secret",
+    "id_rsa", "id_ed25519", "key.pem", "token", "cookie",
+)
+
+
+def _is_sensitive_path(path: str) -> bool:
+    """判断路径是否命中敏感文件名/目录（大小写不敏感，兼容 / 与 \\）。"""
+    import os
+    norm = os.path.normcase(os.path.abspath(path)).replace("\\", "/")
+    parts = norm.split("/")
+    return any(part in seg for seg in parts for part in _SENSITIVE_PARTS)
+
+
 def read_local_file(path: str) -> str:
     """读取本地文本文件内容（限制大小，避免刷屏）。"""
     import os
     try:
+        if _is_sensitive_path(path):
+            return "出于安全考虑，拒绝读取敏感路径（.env / .git / 密钥等文件）"
         if not os.path.exists(path):
             return f"文件不存在: {path}"
         if os.path.isdir(path):
@@ -58,14 +80,14 @@ def read_local_file(path: str) -> str:
         return content
     except Exception as e:
         return f"读取文件出错: {e}"
-PROGRESS_FILE = r"D:/Deepseek/chatbot/progress.json"
+PROGRESS_FILE = BASE_DIR / "progress.json"
 
 def save_progress(topic: str) -> str:
     """保存当前学习进度到本地 JSON 文件（重启不丢）。"""
     import json
-    import os
+    from datetime import datetime
     try:
-        data = {"topic": topic, "updated_at": "2026-08-30"}
+        data = {"topic": topic, "updated_at": datetime.now().isoformat(timespec="seconds")}
         with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return f"已记住学习进度：{topic}"
