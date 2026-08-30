@@ -11,6 +11,7 @@ import json
 import os
 import queue
 import threading
+import time
 import tkinter as tk
 from tkinter import scrolledtext
 
@@ -79,9 +80,15 @@ def chat_worker(user_text, messages, msg_queue):
 
             reply = "".join(content_parts).strip()
             if reply:
-                msg_queue.put(("ai", reply))
+                # 流式打字机：按小块逐条入队，每块间隔 50ms，GUI 才能边收边打
+                for i in range(0, len(reply), 3):
+                    msg_queue.put(("ai_chunk", reply[i:i+3]))
+                    time.sleep(0.05)  # 关键：让小块"慢慢"进队列
                 messages.append({"role": "assistant", "content": reply})
+            msg_queue.put(("ai_done", ""))  # 结束标记，GUI 据此收尾并恢复按钮
             break
+
+
     except Exception as exc:
         msg_queue.put(("error", f"请求失败: {exc}"))
 
@@ -130,6 +137,8 @@ class ChatGUI:
         # 对话历史（system 开头）
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         self.busy = False  # 防止连点发送导致并发
+        self.ai_streaming = False  # 新增：打字机流是否正在进行
+
         
 
     # ---------- 界面操作 ----------
@@ -138,6 +147,13 @@ class ChatGUI:
         self.chat_area.insert(tk.END, text + "\n", tag)
         self.chat_area.config(state="disabled")
         self.chat_area.see(tk.END)  # 自动滚到底部
+    def append_chunk(self, tag, text):
+        """追加一小段文本（不换行），用于打字机效果。"""
+        self.chat_area.config(state="normal")
+        self.chat_area.insert(tk.END, text, tag)
+        self.chat_area.config(state="disabled")
+        self.chat_area.see(tk.END)  # 自动滚到底部
+
 
     def send(self):
         if self.busy:
@@ -191,16 +207,29 @@ class ChatGUI:
                 kind, text = self.msg_queue.get_nowait()
                 if kind == "tool":
                     self.append_chat("tool", text)
-                elif kind == "ai":
-                    self.remove_thinking()  # 新增：AI 回复到了，删掉"思考中"
-                    self.append_chat("ai", f"AI: {text}")
+                elif kind == "ai_chunk":
+                    if not self.ai_streaming:
+                        # 第一块：删掉"思考中"，带 "AI: " 前缀起头
+                        self.remove_thinking()
+                        self.append_chunk("ai", f"AI: {text}")
+                        self.ai_streaming = True
+                    else:
+                        # 后续块：直接接着打
+                        self.append_chunk("ai", text)
+                elif kind == "ai_done":
+                    if self.ai_streaming:
+                        self.append_chat("ai", "")  # 打完了，补个换行收尾
+                    self.ai_streaming = False
                     self.busy = False
                     self.send_btn.config(state="normal")
+
                 elif kind == "error":
                     self.remove_thinking()  # 新增：报错也要删掉"思考中"
                     self.append_chat("error", text)
+                    self.ai_streaming = False  # 出错时也要复位打字机状态
                     self.busy = False
                     self.send_btn.config(state="normal")
+
         except queue.Empty:
             pass
         self.root.after(100, self.poll_queue)
