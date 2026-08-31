@@ -7,6 +7,7 @@
 """
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -24,9 +25,35 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) kb-builder"}
 
 
 def fetch(url: str, timeout: int = 30) -> str:
+    time.sleep(1)  # 每次请求前延时约 1 秒，降低对目标站点的抓取压力
     req = urllib.request.Request(url, headers=HEADERS)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", errors="replace")
+
+
+def check_robots() -> None:
+    """抓取前检查目标站点 robots.txt，若禁止抓取则提示并停止。"""
+    robots_url = urllib.parse.urljoin(BASE, "robots.txt")
+    print(f"[robots] 检查 {robots_url}")
+    try:
+        body = fetch(robots_url)
+    except Exception as e:
+        print(f"[robots] 无法获取 robots.txt（{e}），按无限制继续")
+        return
+    blocked = False
+    for line in body.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, _, value = line.partition(":")
+        if key.strip().lower() == "disallow":
+            path = value.strip()
+            if path != "":
+                blocked = True
+    if blocked:
+        print("[robots] 警告: robots.txt 存在 Disallow 规则（禁止抓取），已停止构建以避免版权/合规风险")
+        sys.exit(1)
+    print("[robots] 未发现禁止抓取规则，继续")
 
 
 def collect_chapter_links() -> list:
@@ -67,6 +94,7 @@ def safe_name(href: str) -> str:
 
 # ---------- 1. 爬取图文正文 ----------
 def build_docs() -> None:
+    check_robots()
     doc_dir = OUT / "docs"
     doc_dir.mkdir(parents=True, exist_ok=True)
     links = collect_chapter_links()
@@ -84,6 +112,8 @@ def build_docs() -> None:
             if len(md) < 50:
                 print(f"  warn  {name} 内容过短({len(md)}字符): {title}")
             dest.parent.mkdir(parents=True, exist_ok=True)
+            # 每篇末尾追加来源标注（独立一行），声明素材出处与使用限制
+            md += "\n\n> 来源：古月居《ROS2入门21讲》book.guyuehome.com，仅个人学习使用，勿公开分发"
             dest.write_text(md, encoding="utf-8")
             print(f"  ok    {name} ({len(md)} 字符)")
             ok += 1
