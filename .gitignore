@@ -24,3 +24,6 @@ chatbot_backup.py
 
 # ===== 运行时数据 =====
 progress.json
+
+# ===== 知识库（爬取的图文内容，不入库；可用 build_kb.py 重建） =====
+kb/

@@ -28,6 +28,7 @@ AIGC:
   - **读文件**：`read_local_file` — 读取本地文本文件内容（UTF-8 / GBK 自动适配，限制 200KB / 5000 字符）。
   - **学习进度记忆**：`save_progress` / `get_progress` — 保存/查询学习进度，数据持久化到本地 JSON 文件（`progress.json`），重启不丢。
   - **ROS2 命令速查**：`ros_cheatsheet` — 按主题查询 `topic / node / launch / pkg / run / colcon / param / service` 常用命令。
+  - **知识库检索**：`kb_search` — 在 ROS2 21讲知识库（图文教程 + 配套代码，`kb/` 目录）中检索概念、原理、代码示例。
 - **GUI 聊天界面**：基于 Python 自带 tkinter，支持打字机流式输出、工具调用日志展示、清空对话，无需额外安装依赖。
 
 ## 技术栈
@@ -82,6 +83,19 @@ GUI 版使用 Python 自带的 tkinter，无需额外安装依赖，支持流式
 
 双击项目根目录的 `start.bat` 即可直接启动命令行版（需已配置好 `.venv` 与 `.env`）。脚本会自动激活虚拟环境并运行 `chatbot.py`，对话结束后按任意键关闭窗口。
 
+## 知识库（ROS2 21讲）
+
+项目内置古月居《ROS2入门21讲》知识库，供 `kb_search` 工具检索（概念、原理、命令用法、代码示例）。
+
+- **内容**：`kb/docs/`（23 个图文教程章节）+ `kb/code/`（21 个配套代码章节）
+- **构建**：`kb/` 已被 `.gitignore` 忽略，首次使用请运行：
+  ```bash
+  pip install beautifulsoup4 html2text   # 构建脚本依赖
+  python build_kb.py                     # 爬取图文教程 + 解析代码仓库，生成 kb/
+  ```
+- **使用**：对话中问 ROS2 概念/原理/代码示例时，模型会自动调用 `kb_search` 检索相关章节再回答，无需手动干预。
+- **注意**：知识库正文来自古月居公开图文教程，仅限个人学习使用，请勿公开分发或商用。
+
 ## 运行截图
 
 ![GUI 聊天界面](docs/screenshot_gui.png)
@@ -94,7 +108,10 @@ chatbot/
 ├── gui.py          # GUI 版聊天界面（tkinter）
 ├── tools.py        # 工具函数实现与注册表（TOOL_MAP）
 ├── schema.py       # 工具声明 Schema（TOOLS），与 tools.py 一一对应
+├── kb_search.py    # 知识库检索工具（kb_search 的实现，检索 kb/ 目录）
+├── build_kb.py     # 知识库构建脚本（爬取图文教程 + 解析代码仓库，生成 kb/）
 ├── start.bat       # Windows 一键启动脚本
+├── kb/             # 知识库内容（运行时生成，已被 .gitignore 忽略）
 ├── progress.json   # 学习进度存储文件（运行时生成，已被 .gitignore 忽略）
 ├── .env            # API Key 配置文件（需自行创建，已被 .gitignore 忽略）
 └── docs/
@@ -107,9 +124,11 @@ chatbot/
 | --- | --- |
 | `chatbot.py` | 命令行版主程序：加载 `.env`、流式调用 DeepSeek API、执行工具调用循环 |
 | `gui.py` | GUI 版聊天界面：后台线程跑对话逻辑，消息队列驱动界面刷新 |
-| `tools.py` | 6 个工具函数的实现与 `TOOL_MAP` 注册表 |
+| `tools.py` | 7 个工具函数的实现与 `TOOL_MAP` 注册表 |
 | `schema.py` | 工具调用声明（Function Calling 的 `tools` 参数），供模型识别 |
 | `start.bat` | 一键启动脚本：激活虚拟环境并运行 `chatbot.py` |
+| `kb_search.py` | 知识库检索工具：在 `kb/` 中检索 ROS2 教程内容（轻量词频检索，零依赖） |
+| `build_kb.py` | 知识库构建脚本：爬取古月居图文教程 + 解析 21 讲代码仓库，生成 `kb/` |
 | `.gitignore` | 忽略 `.env`、`.venv`、缓存与运行时数据等敏感/临时文件 |
 
 ## 添加新工具

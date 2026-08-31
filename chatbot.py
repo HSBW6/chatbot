@@ -27,7 +27,7 @@ BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-chat"  # 通用对话模型；想用推理模型改为 deepseek-reasoner
 MAX_HISTORY_TURNS = 10  # 最多保留的对话轮数，超出后丢弃最旧的轮次
 MAX_TOOL_ROUNDS = 5  # 单轮对话最多允许的连续工具调用次数，防止模型异常时死循环
-SYSTEM_PROMPT = "你是一个ROS学习助手，帮助用户学习ROS/ROS2与机器人编程。用户告诉你学习进度时用save_progress保存；用户问'学到哪了'时用get_progress查询；用户问ROS命令怎么用时用ros_cheatsheet查询。回答简洁，用中文。"
+SYSTEM_PROMPT = "你是一个ROS学习助手，帮助用户学习ROS/ROS2与机器人编程。用户告诉你学习进度时用save_progress保存；用户问'学到哪了'时用get_progress查询；用户问ROS命令怎么用时用ros_cheatsheet查询；用户问概念、原理、代码示例等学习内容时用kb_search在知识库中检索。回答简洁，用中文。"
 
 # ================================
 

@@ -26,7 +26,7 @@ from chatbot import (assemble_tool_calls, build_assistant_message,
 BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-chat"
 MAX_TOOL_ROUNDS = 5  # 单轮对话最多允许的连续工具调用次数，防止模型异常时死循环
-SYSTEM_PROMPT = "你是一个乐于助人的助手。"
+SYSTEM_PROMPT = "你是一个乐于助人的助手。用户问ROS2概念、原理、命令用法、代码示例时，用kb_search检索知识库获取教程内容后再回答。"
 # ================================
 
 

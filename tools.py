@@ -8,6 +8,8 @@
 
 from pathlib import Path
 
+from kb_search import kb_search  # 知识库轻量检索（kb/ 目录）
+
 # 项目根目录（以本文件所在位置定位，不依赖启动时的当前目录）
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -177,4 +179,5 @@ TOOL_MAP = {
     "save_progress": save_progress,
     "get_progress": get_progress,
     "ros_cheatsheet": ros_cheatsheet,
+    "kb_search": kb_search,
 }
