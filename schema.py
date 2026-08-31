@@ -99,7 +99,23 @@ TOOLS = [
                 "required": ["topic"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "kb_search",
+            "description": "在ROS2 21讲知识库中检索某个概念、原理、命令用法或代码示例，返回相关章节内容。用户问'什么是话题/节点/服务''怎么实现XX''ros2命令怎么用'等学习问题时调用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "要检索的知识点关键词或问题，比如 话题 或 如何创建功能包 或 colcon build"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
     }
-
 
 ]
