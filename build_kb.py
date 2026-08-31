@@ -3,8 +3,10 @@
 """构建 ROS2 21讲 知识库：
 1. 爬取 book.guyuehome.com 的 21 讲图文正文 → kb/docs/
 2. 解析 ros2_21_tutorials 代码仓库（带注释代码） → kb/code/
-用法: python build_kb.py
+用法: python build_kb.py [--repo <代码仓库路径>]
+      （也可用环境变量 ROS21_REPO 指定仓库路径）
 """
+import os
 import re
 import sys
 import time
@@ -19,7 +21,20 @@ except ImportError:
     sys.exit("缺少依赖: pip install beautifulsoup4 html2text")
 
 BASE = "https://book.guyuehome.com/"
-REPO = Path(r"C:\Users\lenovo\AppData\Local\Temp\ros2_21_tutorials")
+
+
+def resolve_repo() -> Path:
+    """代码仓库路径：--repo 参数 > ROS21_REPO 环境变量 > 项目目录下 ros2_21_tutorials。"""
+    for i, arg in enumerate(sys.argv):
+        if arg == "--repo" and i + 1 < len(sys.argv):
+            return Path(sys.argv[i + 1])
+    env = os.environ.get("ROS21_REPO")
+    if env:
+        return Path(env)
+    return Path(__file__).resolve().parent / "ros2_21_tutorials"
+
+
+REPO = resolve_repo()
 OUT = Path(__file__).resolve().parent / "kb"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) kb-builder"}
 
@@ -32,7 +47,11 @@ def fetch(url: str, timeout: int = 30) -> str:
 
 
 def check_robots() -> None:
-    """抓取前检查目标站点 robots.txt，若禁止抓取则提示并停止。"""
+    """抓取前检查目标站点 robots.txt，若禁止抓取则提示并停止。
+
+    已知限制：未按 User-agent 分段解析（安全优先的简化版），
+    全文件中任一非空 Disallow 即视为禁止；对无 robots.txt 的站点无影响。
+    """
     robots_url = urllib.parse.urljoin(BASE, "robots.txt")
     print(f"[robots] 检查 {robots_url}")
     try:
