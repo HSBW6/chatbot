@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 HSBW6
 """DeepSeek 多轮对话机器人 - 简单 GUI 版（tkinter）
 
 运行方式:
