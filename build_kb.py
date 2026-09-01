@@ -99,6 +99,12 @@ def page_to_md(href: str) -> str:
     html = fetch(url)
     soup = BeautifulSoup(html, "html.parser")
     article = soup.find("article") or soup.select_one(".md-content__inner") or soup.body
+    # 把 <pre> 代码块转成 ``` 围栏块：html2text 默认会转成 4 空格缩进，
+    # 检索切块时会被空行切碎，且与 code/ 目录的完整代码格式不一致
+    for pre in article.find_all("pre"):
+        code = pre.get_text()
+        fence = "```"
+        pre.replace_with(soup.new_string(f"\n{fence}\n{code.strip()}\n{fence}\n"))
     h = html2text.HTML2Text()
     h.ignore_images = True   # 正文图片暂不下载（后续可增强）
     h.body_width = 0         # 不折行

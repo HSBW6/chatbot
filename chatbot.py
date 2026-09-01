@@ -29,6 +29,7 @@ BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-chat"  # 通用对话模型；想用推理模型改为 deepseek-reasoner
 MAX_HISTORY_TURNS = 10  # 最多保留的对话轮数，超出后丢弃最旧的轮次
 MAX_TOOL_ROUNDS = 5  # 单轮对话最多允许的连续工具调用次数，防止模型异常时死循环
+MAX_TOOL_RESULT_CHARS = 8000  # 单条工具结果写入历史的最大字符数，防止上下文膨胀
 SYSTEM_PROMPT = "你是一个ROS学习助手，帮助用户学习ROS/ROS2与机器人编程。用户告诉你学习进度时用save_progress保存；用户问'学到哪了'时用get_progress查询；用户问ROS命令怎么用时用ros_cheatsheet查询；用户问概念、原理、代码示例等学习内容时用kb_search在知识库中检索。回答简洁，用中文。"
 
 # ================================
@@ -98,10 +99,14 @@ def process_tool_calls(messages, tool_calls):
             result = TOOL_MAP[name](**args)
         except Exception as e:
             result = f"工具执行出错: {e}"
+        result = str(result)
+        if len(result) > MAX_TOOL_RESULT_CHARS:
+            result = (result[:MAX_TOOL_RESULT_CHARS]
+                      + f"\n...[工具结果过长已截断，共 {len(result)} 字符]")
         messages.append({
             "role": "tool",
             "tool_call_id": call["id"],
-            "content": str(result),
+            "content": result,
         })
 
 

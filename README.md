@@ -49,8 +49,8 @@ python -m venv .venv
 # 激活虚拟环境
 .\.venv\Scripts\activate
 
-# 安装依赖（只需 openai 一个包）
-pip install openai
+# 安装依赖（openai + 知识库构建脚本依赖）
+pip install -r requirements.txt
 ```
 
 ### 2. 配置 API Key
@@ -88,9 +88,8 @@ GUI 版使用 Python 自带的 tkinter，无需额外安装依赖，支持流式
 项目内置古月居《ROS2入门21讲》知识库，供 `kb_search` 工具检索（概念、原理、命令用法、代码示例）。
 
 - **内容**：`kb/docs/`（23 个图文教程章节）+ `kb/code/`（21 个配套代码章节）
-- **构建**：`kb/` 已被 `.gitignore` 忽略，首次使用请运行：
+- **构建**：`kb/` 已被 `.gitignore` 忽略，首次使用请运行（依赖已在 `requirements.txt` 中）：
   ```bash
-  pip install beautifulsoup4 html2text   # 构建脚本依赖
   python build_kb.py                     # 爬取图文教程 + 解析代码仓库，生成 kb/
   ```
 - **使用**：对话中问 ROS2 概念/原理/代码示例时，模型会自动调用 `kb_search` 检索相关章节再回答，无需手动干预。
@@ -110,6 +109,7 @@ chatbot/
 ├── schema.py       # 工具声明 Schema（TOOLS），与 tools.py 一一对应
 ├── kb_search.py    # 知识库检索工具（kb_search 的实现，检索 kb/ 目录）
 ├── build_kb.py     # 知识库构建脚本（爬取图文教程 + 解析代码仓库，生成 kb/）
+├── requirements.txt # 依赖清单（openai + 构建脚本依赖）
 ├── start.bat       # Windows 一键启动脚本
 ├── kb/             # 知识库内容（运行时生成，已被 .gitignore 忽略）
 ├── progress.json   # 学习进度存储文件（运行时生成，已被 .gitignore 忽略）
