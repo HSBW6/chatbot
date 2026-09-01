@@ -3,7 +3,7 @@
 # Copyright (c) 2026 HSBW6
 """tools.py 与 kb_search.py 的单元测试。
 
-运行方式（在项目根目录 D:\Deepseek\chatbot 下）：
+运行方式（在项目根目录 D:\\Deepseek\\chatbot 下）：
     python -m unittest discover -s tests -v
 """
 import json
