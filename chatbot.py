@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 HSBW6
 """DeepSeek 多轮对话命令行机器人。
 
 用法:

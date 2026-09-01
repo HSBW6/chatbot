@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 HSBW6
 """知识库轻量检索：在 kb/ 目录的 Markdown 文件上做关键词/词频检索。
 
 方案 A（零外部依赖）：

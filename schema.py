@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 HSBW6
 """工具声明（Schema）：告诉模型有哪些工具可用、怎么用。
 
 注意：TOOLS 列表的顺序、字段名要与 tools.py 里的函数保持一致。

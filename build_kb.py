@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 HSBW6
 """构建 ROS2 21讲 知识库：
 1. 爬取 book.guyuehome.com 的 21 讲图文正文 → kb/docs/
 2. 解析 ros2_21_tutorials 代码仓库（带注释代码） → kb/code/
@@ -145,7 +147,7 @@ def build_docs() -> None:
 # ---------- 2. 解析代码仓库 ----------
 CODE_FILES = {".py", ".cpp", ".hpp", ".h", ".xml", ".yaml", ".urdf", ".xacro",
               ".sdf", ".msg", ".srv", ".action", ".launch", ".cmake"}
-CODE_NAMES = {"CMakeLists.txt", "package.xml"}
+CODE_NAMES = {"CMakeLists.txt", "package.xml", "LICENSE", "COPYING", "NOTICE", "README", "README.md"}
 SKIP_DIRS = {"__pycache__", ".git", "build", "install", "log"}
 
 
@@ -194,7 +196,8 @@ def build_index() -> None:
     docs = sorted(OUT.glob("docs/**/*.md"))
     codes = sorted(OUT.glob("code/*.md"))
     lines = ["# ROS2 21讲 知识库", "",
-             "> 素材来源: 古月居图文教程(book.guyuehome.com) + ros2_21_tutorials 代码仓库（个人学习用途，勿公开分发）", ""]
+             "> 素材来源: 古月居图文教程(book.guyuehome.com) + ros2_21_tutorials 代码仓库（个人学习用途，勿公开分发）",
+             "> 代码仓库许可证: Apache License 2.0（构建时已随代码章节保留仓库根 LICENSE/COPYING/NOTICE 等许可证文件）", ""]
     lines += ["## 图文正文", ""]
     for f in docs:
         lines.append(f"- [{f.stem}](docs/{f.relative_to(OUT / 'docs').as_posix()})")

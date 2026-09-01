@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 HSBW6
 """工具函数与注册表。
 
 新增工具三步走：
