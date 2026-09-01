@@ -89,7 +89,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "ros_cheatsheet",
-            "description": "查询ROS2常用命令速查表，比如用户问 ros2 topic、ros2 node、ros2 launch 等命令怎么用时调用",
+            "description": "快速查询ROS2常用命令速查表（只列命令，不讲解），比如用户只想知道 ros2 topic、ros2 node、ros2 launch 等命令怎么敲时调用。若用户想了解概念原理或代码详解，请改用 kb_search",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -106,7 +106,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "kb_search",
-            "description": "在ROS2 21讲知识库中检索某个概念、原理、命令用法或代码示例，返回相关章节内容。用户问'什么是话题/节点/服务''怎么实现XX''ros2命令怎么用'等学习问题时调用",
+            "description": "在ROS2 21讲知识库中检索概念、原理、代码详解，返回相关教程章节。用户问'什么是话题/节点/服务''怎么实现XX''ROS2命令的用法和原理'等学习问题时调用；仅想快速查命令列表时请改用 ros_cheatsheet",
             "parameters": {
                 "type": "object",
                 "properties": {

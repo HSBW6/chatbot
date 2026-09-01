@@ -1,0 +1,6 @@
+# ===== 运行时依赖（chatbot.py / gui.py） =====
+openai>=1.0
+
+# ===== 知识库构建脚本依赖（build_kb.py） =====
+beautifulsoup4>=4.11
+html2text>=2020.1.16

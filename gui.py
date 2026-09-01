@@ -21,8 +21,8 @@ from openai import OpenAI
 
 from schema import TOOLS
 from tools import TOOL_MAP
-from chatbot import (assemble_tool_calls, build_assistant_message,
-                     load_env_file, trim_history)
+from chatbot import (MAX_TOOL_RESULT_CHARS, assemble_tool_calls,
+                     build_assistant_message, load_env_file, trim_history)
 
 # ============ 可配置项 ============
 BASE_URL = "https://api.deepseek.com"
@@ -46,10 +46,14 @@ def run_tool_and_feedback(messages, tool_calls, msg_queue):
             result = TOOL_MAP[name](**args)
         except Exception as e:
             result = f"工具执行出错: {e}"
+        result = str(result)
+        if len(result) > MAX_TOOL_RESULT_CHARS:
+            result = (result[:MAX_TOOL_RESULT_CHARS]
+                      + f"\n...[工具结果过长已截断，共 {len(result)} 字符]")
         messages.append({
             "role": "tool",
             "tool_call_id": call["id"],
-            "content": str(result),
+            "content": result,
         })
 
 
