@@ -29,6 +29,7 @@ AIGC:
   - **学习进度记忆**：`save_progress` / `get_progress` — 保存/查询学习进度，数据持久化到本地 JSON 文件（`progress.json`），重启不丢。
   - **ROS2 命令速查**：`ros_cheatsheet` — 按主题查询 `topic / node / launch / pkg / run / colcon / param / service` 常用命令。
   - **知识库检索**：`kb_search` — 在 ROS2 21讲知识库（图文教程 + 配套代码，`kb/` 目录）中检索概念、原理、代码示例。
+  - **本地语义检索（可选）**：`rag.py` — 用本地向量模型把知识库切成小块做向量化，支持按语义相似度检索，比关键词检索更能理解"换种说法"的问题（详情见下文）。
 - **GUI 聊天界面**：基于 Python 自带 tkinter，支持打字机流式输出、工具调用日志展示、清空对话，无需额外安装依赖。
 
 ## 技术栈
@@ -36,6 +37,7 @@ AIGC:
 - **Python 3**（标准库 + `openai` SDK）
 - **DeepSeek API**（`https://api.deepseek.com`，模型 `deepseek-chat`，可选 `deepseek-reasoner`）
 - **Function Calling**（`tools` 参数声明工具，流式解析工具调用并回填历史）
+- **本地向量检索（可选）**：`fastembed` + BGE-small-zh-v1.5 中文向量模型（512 维，余弦相似度），仅 `rag.py` 使用
 - **JSON 存储**（学习进度持久化到 `progress.json`）
 
 ## 快速开始
@@ -95,6 +97,23 @@ GUI 版使用 Python 自带的 tkinter，无需额外安装依赖，支持流式
 - **使用**：对话中问 ROS2 概念/原理/代码示例时，模型会自动调用 `kb_search` 检索相关章节再回答，无需手动干预。
 - **注意**：知识库素材版权归古月居（武汉精锋微控科技有限公司）所有，本仓库仅包含构建脚本，不含知识库正文；如需使用教程内容请访问 book.guyuehome.com 获取授权。
 
+## 本地语义检索（rag.py，可选）
+
+`kb_search` 是关键词/词频检索，适合"查命令、查名词"；如果想问"换个说法"也能命中（比如搜『ROS2里怎么创建一个发布节点』），可以用 `rag.py` 做语义检索——它对理解类问题更友好。
+
+- **原理**：复用 `kb_search.py` 的切块逻辑把 `kb/` 内容切成小块 → 本地模型 `BAAI/bge-small-zh-v1.5` 转成 512 维向量 → 和你的问题算余弦相似度，返回最像的 Top-K（低于阈值 `SIM_THRESHOLD` 的结果会丢弃，避免硬答）。
+- **依赖安装**（可选，只影响本脚本）：
+  ```bash
+  pip install -r requirements.txt   # 含 fastembed + numpy
+  ```
+- **首次运行**：会自动把向量模型下载/缓存到项目内 `kb/_models/`（不在系统临时目录，清临时文件不丢）；语料没变时向量缓存存 `kb/_rag_cache.pkl`，二次查询秒回。
+- **用法**：
+  ```bash
+  python rag.py "ROS2里怎么创建一个发布节点"
+  ```
+  国内网络下首次下载模型若超时，脚本已默认走 `hf-mirror.com` 镜像。
+- **可调参数**（`rag.py` 顶部配置区）：`SIM_THRESHOLD`（相似度阈值，默认 0.4，调高更严格、调低更宽松）、`SPLIT_VERSION`（改过切块/向量化逻辑记得 +1，旧缓存自动作废）。
+
 ## 运行截图
 
 ![GUI 聊天界面](docs/screenshot_gui.png)
@@ -108,6 +127,7 @@ chatbot/
 ├── tools.py        # 工具函数实现与注册表（TOOL_MAP）
 ├── schema.py       # 工具声明 Schema（TOOLS），与 tools.py 一一对应
 ├── kb_search.py    # 知识库检索工具（kb_search 的实现，检索 kb/ 目录）
+├── rag.py          # 本地语义检索脚本（可选，向量化 kb/ 后按语义相似度检索）
 ├── build_kb.py     # 知识库构建脚本（爬取图文教程 + 解析代码仓库，生成 kb/）
 ├── requirements.txt # 依赖清单（openai + 构建脚本依赖）
 ├── start.bat       # Windows 一键启动脚本
@@ -128,6 +148,7 @@ chatbot/
 | `schema.py` | 工具调用声明（Function Calling 的 `tools` 参数），供模型识别 |
 | `start.bat` | 一键启动脚本：激活虚拟环境并运行 `chatbot.py` |
 | `kb_search.py` | 知识库检索工具：在 `kb/` 中检索 ROS2 教程内容（轻量词频检索，零依赖） |
+| `rag.py` | 本地语义检索脚本：复用 `kb_search.py` 切块，向量化后按余弦相似度检索（可选依赖 fastembed） |
 | `build_kb.py` | 知识库构建脚本：爬取古月居图文教程 + 解析 21 讲代码仓库，生成 `kb/` |
 | `.gitignore` | 忽略 `.env`、`.venv`、缓存与运行时数据等敏感/临时文件 |
 

@@ -4,3 +4,7 @@ openai>=1.0
 # ===== 知识库构建脚本依赖（build_kb.py） =====
 beautifulsoup4>=4.11
 html2text>=2020.1.16
+
+# ===== 本地语义检索可选依赖（rag.py，不装则只影响 rag.py 本身） =====
+fastembed>=0.3
+numpy>=1.24
