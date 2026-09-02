@@ -82,7 +82,51 @@ def trim_history(messages: List[dict]) -> List[dict]:
     while total > MAX_CONTEXT_CHARS and len(messages) > 2:
         dropped = messages.pop(1)  # 从最旧的历史消息开始丢（index 0 是 system）
         total -= _msg_chars(dropped)
-    return messages
+    return _cleanup_message_pairs(messages)
+
+
+
+def _cleanup_message_pairs(messages: List[dict]) -> List[dict]:
+    """清理工具调用配对，防止孤儿 tool 消息导致 API 400。
+
+    OpenAI 兼容 API 要求 role=tool 消息前面必须有配对的
+    assistant.tool_calls；裁剪可能拆散配对，这里统一修补：
+    1) 丢弃前面没有配对声明的孤儿 tool 消息；
+    2) 移除 assistant.tool_calls 中响应已被裁掉的 call；
+    3) assistant 消息若既无 content 也无 tool_calls，整条移除。
+    """
+    responded: set = set()   # 已配对成功的 call_id
+    pending: set = set()     # 正在等待 tool 响应的 call_id
+    first_pass = []
+    for m in messages:
+        if m["role"] == "assistant" and m.get("tool_calls"):
+            first_pass.append(m)
+            for tc in m["tool_calls"]:
+                pending.add(tc["id"])
+        elif m["role"] == "tool":
+            cid = m.get("tool_call_id")
+            if cid in pending:          # 前面有声明 → 合法，保留
+                pending.discard(cid)
+                responded.add(cid)
+                first_pass.append(m)
+            else:
+                pass                    # 孤儿 tool 消息 → 丢弃
+        else:
+            if m["role"] == "user":     # 新一轮开始，作废没等到响应的声明
+                pending.clear()
+            first_pass.append(m)
+
+    result = []
+    for m in first_pass:
+        if m["role"] == "assistant" and m.get("tool_calls"):
+            alive = [tc for tc in m["tool_calls"] if tc["id"] in responded]
+            if not alive and not (m.get("content") or ""):
+                continue                # 空壳 assistant → 整条移除
+            if alive != m["tool_calls"]:
+                m = {**m, "tool_calls": alive}   # 只保留有响应的 call
+        result.append(m)
+    return result
+
 
 def build_assistant_message(tool_calls, content=""):
     """把流式拼装出的工具调用转成标准 assistant 消息，用于回填历史。"""
