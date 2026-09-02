@@ -21,14 +21,13 @@ from openai import OpenAI
 
 from schema import TOOLS
 from tools import TOOL_MAP
-from chatbot import (MAX_TOOL_RESULT_CHARS, assemble_tool_calls,
+from chatbot import (MAX_TOOL_RESULT_CHARS,SYSTEM_PROMPT, assemble_tool_calls,
                      build_assistant_message, load_env_file, trim_history)
 
 # ============ 可配置项 ============
 BASE_URL = "https://api.deepseek.com"
 MODEL = "deepseek-chat"
 MAX_TOOL_ROUNDS = 5  # 单轮对话最多允许的连续工具调用次数，防止模型异常时死循环
-SYSTEM_PROMPT = "你是一个乐于助人的助手。用户问ROS2概念、原理、命令用法、代码示例时，用kb_search检索知识库获取教程内容后再回答。"
 # ================================
 
 
