@@ -30,6 +30,7 @@ MODEL = "deepseek-chat"  # 通用对话模型；想用推理模型改为 deepsee
 MAX_HISTORY_TURNS = 10  # 最多保留的对话轮数，超出后丢弃最旧的轮次
 MAX_TOOL_ROUNDS = 5  # 单轮对话最多允许的连续工具调用次数，防止模型异常时死循环
 MAX_TOOL_RESULT_CHARS = 8000  # 单条工具结果写入历史的最大字符数，防止上下文膨胀
+MAX_CONTEXT_CHARS=30000   # 整个上下文（system+历史）的总字符预算，防止单次请求超长
 SYSTEM_PROMPT = "你是一个ROS学习助手，帮助用户学习ROS/ROS2与机器人编程。用户告诉你学习进度时用save_progress保存；用户问'学到哪了'时用get_progress查询；用户问ROS命令怎么用时用ros_cheatsheet查询；用户问概念、原理、代码示例等学习内容时用kb_search在知识库中检索。回答简洁，用中文。"
 
 # ================================
@@ -60,12 +61,29 @@ def load_env_file(path=None) -> None:
         pass  # 没有 .env 文件时静默，交给环境变量处理
 
 
+def _msg_chars(m: dict) -> int:
+    """估算一条消息占用的字符数：content + 工具调用参数都要算。"""
+    n = len(m.get("content") or "")
+    for tc in m.get("tool_calls") or []:
+        n += len(tc.get("function", {}).get("arguments", ""))
+    return n
+
+
 def trim_history(messages: List[dict]) -> List[dict]:
-    """控制上下文长度：只保留 system + 最近 MAX_HISTORY_TURNS 轮（每轮最多 4 条，含工具消息）。"""
+    """控制上下文长度：
+    1) 条数限制：只保留 system + 最近 MAX_HISTORY_TURNS 轮；
+    2) 字符预算：仍超 MAX_CONTEXT_CHARS 时，从最旧的历史消息开始丢（system 和最后一轮用户消息始终保留）。
+    """
     max_messages = 1 + MAX_HISTORY_TURNS * 4
     if len(messages) > max_messages:
-        return [messages[0]] + messages[-(max_messages - 1):]
+        messages = [messages[0]] + messages[-(max_messages - 1):]
+
+    total = sum(_msg_chars(m) for m in messages)
+    while total > MAX_CONTEXT_CHARS and len(messages) > 2:
+        dropped = messages.pop(1)  # 从最旧的历史消息开始丢（index 0 是 system）
+        total -= _msg_chars(dropped)
     return messages
+
 def build_assistant_message(tool_calls, content=""):
     """把流式拼装出的工具调用转成标准 assistant 消息，用于回填历史。"""
     return {
