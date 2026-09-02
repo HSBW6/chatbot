@@ -50,7 +50,8 @@ TOOLS = [
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "文件的完整路径，比如 D:/test.txt"
+                        "description": "文件的完整绝对路径，例如 C:/Users/lenovo/Documents/学习笔记.txt"
+
                     }
                 },
                 "required": ["path"]
