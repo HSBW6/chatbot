@@ -40,7 +40,7 @@ MODEL_DIR = Path(__file__).resolve().parent / "kb" / "_models"
 # 用处：切块规则版本。以后改过切块/向量化逻辑就 +1，旧缓存自动作废重建。
 SPLIT_VERSION = 1
 # 用处：相似度阈值（余弦）。低于它的结果视为"知识库没相关内容"。
-SIM_THRESHOLD = 0.4
+SIM_THRESHOLD = 0.55
 # 用处：进程内缓存，避免同一次运行里二次查询重复向量化。
 _mem_cache = {"fp": None, "chunks": None, "vectors": None}
 _model = None
