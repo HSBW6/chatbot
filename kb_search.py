@@ -14,6 +14,8 @@ from pathlib import Path
 
 KB_DIR = Path(__file__).resolve().parent / "kb"
 _MAX_TOTAL = 4500  # 单次检索返回的总字符上限，防止上下文膨胀
+_MIN_SCORE = 3  # 关键词命中最低分；低于它视为噪声命中，交给语义兜底裁决
+
 
 _CJK = re.compile(r"[\u4e00-\u9fff]+")
 _WORD = re.compile(r"[a-zA-Z0-9]+")
@@ -99,6 +101,28 @@ def _score_chunk(query_tokens: list, chunk: dict) -> int:
     return score
 
 
+def _format_output(query, hits, top_k, max_chars, max_total, semantic=False):
+    """用处：把命中的 [(分数, chunk)] 列表统一排版成可读文字。
+    semantic=True 表示这批命中来自语义检索，分数是 0~1 的相似度；
+    否则来自关键词检索，分数是词频整数。两种来源共用同一套排版，
+    上层（模型/tools）看到的格式完全一致，这就是"对外零改动"的关键。"""
+    out = [f"知识库检索到 {len(hits)} 个相关片段（关键词: {query}）：", ""]
+    total = 0                                  # 累计已输出的字数
+    for i, (s, c) in enumerate(hits[:top_k], 1):
+        budget = max_total - total - 200       # 预留后续片段头部空间
+        if budget <= 0:                        # 预算耗尽就停
+            break
+        text = c["text"][:min(max_chars, budget)]
+        score = f"{s:.2f}" if semantic else str(s)   # 语义分保留2位小数，关键词分原样
+        label = "语义匹配" if semantic else "相关度"  # 来源标签，方便日后排查
+        out.append(f"【片段{i}】来源: {c['path']}（{label} {score}）")
+        out.append(text)
+        out.append("")
+        total += len(text)
+    return "\n".join(out)
+
+
+
 def kb_search(query: str, top_k: int = 3, max_chars: int = 2000,
               max_total: int = _MAX_TOTAL) -> str:
     """在知识库中检索与 query 相关的章节片段，返回可直接阅读的文本。
@@ -121,25 +145,32 @@ def kb_search(query: str, top_k: int = 3, max_chars: int = 2000,
     chunks = _load_chunks()
     scored = sorted((( _score_chunk(tokens, c), c) for c in chunks),
                     key=lambda x: x[0], reverse=True)
-    hits = [s for s, _ in scored if s > 0][:top_k]
-    if not hits:
-        return f"知识库中未找到与「{query}」相关的内容，请换个说法试试"
 
-    out = [f"知识库检索到 {len(hits)} 个相关片段（关键词: {query}）：", ""]
-    total = 0
-    for i, s in enumerate(scored[:top_k], 1):
-        if s[0] <= 0:
-            break
-        c = s[1]
-        budget = max_total - total - 200  # 预留后续片段头部空间
-        if budget <= 0:
-            break
-        text = c["text"][:min(max_chars, budget)]
-        out.append(f"【片段{i}】来源: {c['path']}（相关度 {s[0]}）")
-        out.append(text)
-        out.append("")
-        total += len(text)
-    return "\n".join(out)
+
+
+    hits = [(s, c) for s, c in scored if s >= _MIN_SCORE][:top_k]
+    if hits:
+        # 用处：快路径——关键词有命中就直接返回，毫秒级，完全不碰语义模型
+        return _format_output(query, hits, top_k, max_chars, max_total, semantic=False)
+
+    # ===== 语义兜底：只有关键词零命中才走到这 =====
+    # 用处：延迟 import。rag.py 顶部依赖 numpy/fastembed，而且 rag 顶部又
+    # 反向 import 了 kb_search——如果 kb_search 顶层也 import rag，两个文件
+    # 互相引用会循环导入直接崩。放函数内，快路径永远零额外依赖；
+    # 只有真正需要兜底时才加载模型。rag 装不上/坏了就静默降级回原来的
+    # "未找到"话术，绝不让主链路因为这个保险丝报错。
+    try:
+        from rag import search_similar
+    except Exception:
+        return f"知识库中未找到与「{query}」相关的内容，请换个说法试试"
+    sem_hits = search_similar(query, top_k=top_k)   # 内部已过滤 <0.55 的块
+    if not sem_hits:
+        # 用处：语义也没找到达标的——保持原来的"未找到"话术，行为不变
+        return f"知识库中未找到与「{query}」相关的内容，请换个说法试试"
+    # 用处：sem_hits 是 [(chunk, 相似度)]，翻成 (分数, chunk) 统一结构去排版
+    return _format_output(query, [(s, c) for c, s in sem_hits],
+                          top_k, max_chars, max_total, semantic=True)
+
 
 
 if __name__ == "__main__":
