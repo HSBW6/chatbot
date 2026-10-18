@@ -133,11 +133,13 @@ def kb_search(query: str, top_k: int = 3, max_chars: int = 2000,
         max_chars: 每个片段截断长度。
         max_total: 全部片段的总字符上限（防止结果撑爆上下文）。
     """
-    if not KB_DIR.exists():
-        return "知识库尚未构建：请先运行 build_kb.py 生成 kb/ 目录"
+    # 先判空查询：空输入是调用方的问题，不该被"知识库没构建"掩盖；
+    # 也让全新 clone（没有 kb/）时这条分支的测试仍然成立。
     query = (query or "").strip()
     if not query:
         return "检索关键词为空"
+    if not KB_DIR.exists():
+        return "知识库尚未构建：请先运行 build_kb.py 生成 kb/ 目录"
     tokens = _tokenize(query)
     if not tokens:
         return "未能从查询中提取关键词"
