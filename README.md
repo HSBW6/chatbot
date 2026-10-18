@@ -10,7 +10,7 @@
 
 ## 功能列表
 
-- **多轮对话**：基于 DeepSeek `deepseek-chat` 模型，流式输出回复，自动维护上下文历史（默认保留最近 10 轮）。
+- **多轮对话**：基于 DeepSeek `deepseek-flash` 模型（旧名 `deepseek-chat` 已下线），流式输出回复，自动维护上下文历史（默认保留最近 10 轮）。
 - **工具调用（Function Calling）**：
   - **查天气**：`get_weather` — 调用 wttr.in 实时查询任意城市天气（免费、无需 Key）。
   - **计算**：`calculate` — 计算数学表达式，仅允许数字与运算符，防止注入。
@@ -19,13 +19,17 @@
   - **ROS2 命令速查**：`ros_cheatsheet` — 按主题查询 `topic / node / launch / pkg / run / colcon / param / service` 常用命令。
   - **知识库检索**：`kb_search` — 在 ROS2 21讲知识库（图文教程 + 配套代码，`kb/` 目录）中检索概念、原理、代码示例。
   - **本地语义检索（可选）**：`rag.py` — 用本地向量模型把知识库切成小块做向量化，支持按语义相似度检索，比关键词检索更能理解"换种说法"的问题（详情见下文）。
+- **多步 Agent（Plan-and-Execute + ReAct）**：`react_agent.py` — 先把任务拆成显式计划，再逐步执行；每步内部是「选工具 → 观察 → 再决定」的 ReAct 循环，每步结束做一次反思，可继续 / 重规划 / 提前结束。与 `chatbot.py` 的单轮工具循环区分开（见下文）。
+- **MCP server**：`mcp_server.py` — 把 7 个工具暴露成 MCP（Model Context Protocol）标准接口，Claude Desktop / Cursor 等客户端可直接挂载，无需改客户端代码。
 - **GUI 聊天界面**：基于 Python 自带 tkinter，支持打字机流式输出、工具调用日志展示、清空对话，无需额外安装依赖。
 
 ## 技术栈
 
 - **Python 3**（标准库 + `openai` SDK）
-- **DeepSeek API**（`https://api.deepseek.com`，模型 `deepseek-chat`，可选 `deepseek-reasoner`）
+- **DeepSeek API**（`https://api.deepseek.com`，模型 `deepseek-flash`，旧名 `deepseek-chat` 已下线）
 - **Function Calling**（`tools` 参数声明工具，流式解析工具调用并回填历史）
+- **Plan-and-Execute + ReAct**（`react_agent.py`：显式计划 → 逐步执行 → 反思重规划）
+- **MCP（Model Context Protocol）**（`mcp_server.py`，mcp 2.x 的 `MCPServer`，stdio 传输）
 - **本地向量检索（可选）**：`fastembed` + BGE-small-zh-v1.5 中文向量模型（512 维，余弦相似度），仅 `rag.py` 使用
 - **JSON 存储**（学习进度持久化到 `progress.json`）
 
@@ -118,6 +122,46 @@ GUI 版使用 Python 自带的 tkinter，无需额外安装依赖，支持流式
 python rag.py "ROS2里怎么创建一个发布节点"
 ```
 
+## 多步 Agent（`react_agent.py`）
+
+`chatbot.py` 的工具循环是隐式的：一条用户消息 → 最多 5 次工具调用 → 回答。`react_agent.py` 把它拆成四段：
+
+1. **Plan**：先让模型输出 JSON 计划（2~6 步）。计划是结构化数据，可展示、可测试，不靠模型自由发挥。
+2. **Execute**：每一步内部是 ReAct 循环（选工具 → 观察 → 再决定），单步最多 4 轮工具调用。
+3. **Reflect**：每步结束后判断继续 / 重规划 / 提前结束；重规划最多 2 次，防止绕圈。
+4. **Synthesize**：把各步观察汇总成最终答复。
+
+```bash
+python react_agent.py "先查 ROS2 topic 的常用命令，再算 2**10，最后总结你做了什么"
+```
+
+实测输出（2026-10）：模型自己调用了 `ros_cheatsheet` 与 `calculate`，给出 5 个 topic 命令与 `2**10 = 1024`。
+
+**为什么不用 LangGraph**：这个规模（7 个工具、单进程）自己写 ~300 行循环，更容易控制"单步失败怎么办、什么时候重规划"；LangGraph 的收益在持久化、人工审批、并行分支，等有这些需求再换。这是能讲清的取舍，不是"没用过框架"。
+
+## MCP server（`mcp_server.py`）
+
+把 `tools.py` 的 7 个工具暴露成 MCP server（stdio 传输）：
+
+```bash
+python mcp_server.py
+```
+
+客户端配置（Claude Desktop / Cursor 的 `mcpServers`）：
+
+```json
+{
+  "mcpServers": {
+    "ros-assistant": {
+      "command": "python",
+      "args": ["D:/Deepseek/chatbot/mcp_server.py"]
+    }
+  }
+}
+```
+
+实现上：工具 description 复用 `schema.TOOLS`（单一来源），schema 由 `tools.py` 的函数签名自动生成；stdio 下 **stdout 是协议通道**，日志一律写 stderr。已验证：握手 → `tools/list`（7 个工具）→ `tools/call`（`calculate` 返回 `2`）。
+
 ## 运行截图
 
 ![GUI 聊天界面](docs/screenshot_gui.png)
@@ -127,6 +171,8 @@ python rag.py "ROS2里怎么创建一个发布节点"
 ```
 chatbot/
 ├── chatbot.py      # 命令行版主程序（多轮对话 + 工具调用循环）
+├── react_agent.py  # 多步 Agent：Plan-and-Execute + ReAct（显式计划 / 反思 / 重规划）
+├── mcp_server.py   # MCP server：把 7 个工具暴露成 MCP 标准接口
 ├── gui.py          # GUI 版聊天界面（tkinter）
 ├── tools.py        # 工具函数实现与注册表（TOOL_MAP）
 ├── schema.py       # 工具声明 Schema（TOOLS），与 tools.py 一一对应
@@ -147,6 +193,8 @@ chatbot/
 | 文件 | 作用 |
 | --- | --- |
 | `chatbot.py` | 命令行版主程序：加载 `.env`、流式调用 DeepSeek API、执行工具调用循环 |
+| `react_agent.py` | 多步 Agent：显式计划 → 逐步 ReAct（工具/观察）→ 反思重规划 → 汇总 |
+| `mcp_server.py` | MCP server：把 7 个工具暴露成 MCP 标准接口（stdio） |
 | `gui.py` | GUI 版聊天界面：后台线程跑对话逻辑，消息队列驱动界面刷新 |
 | `tools.py` | 7 个工具函数的实现与 `TOOL_MAP` 注册表 |
 | `schema.py` | 工具调用声明（Function Calling 的 `tools` 参数），供模型识别 |
@@ -172,9 +220,11 @@ chatbot/
 python -m unittest discover -s tests -v
 ```
 
-- **用例数**：当前共 **31 个**用例（可用 `python -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"` 实测收集确认）。
+- **用例数**：当前共 **47 个**用例（可用 `python -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"` 实测收集确认）。
 - **覆盖范围**：
   - **工具函数**（`tools.py`）：`calculate` 表达式与非法字符校验；`read_local_file` 的敏感路径拦截、目录/不存在、大小限制与自动截断、UTF-8 编码；`save_progress` / `get_progress` 的 JSON 读写（测试内已把 `PROGRESS_FILE` 指向临时文件，不会污染真实进度）；`ros_cheatsheet` 中英文关键词匹配；`get_weather`（mock 网络，不真实联网）；
+  - **多步 Agent**（`react_agent.py`）：计划解析（含 JSON 围栏）、工具调用、未知工具兜底、重规划、工具轮数上限、空任务（注入假 `chat_fn`，不联网、不花额度）；
+  - **MCP server**（`mcp_server.py`）：工具注册数量/名称/描述与 `TOOL_MAP` 一致、`dispatch` 的往返与错误兜底（不启动 stdio 会话）；
   - **知识库检索**（`kb_search.py`）：分词、按标题切块、空查询与知识库缺失时的兜底提示；
   - **历史裁剪与工具调用配对**（`chatbot.py`）：`trim_history` 在字符预算裁剪后，`assistant(tool_calls) -> tool` 的配对不被拆散（回归 06148b1 引入裁剪后出现过的孤儿 `tool` 消息导致 API 400 的问题）。
 

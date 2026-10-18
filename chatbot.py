@@ -26,7 +26,7 @@ from tools import TOOL_MAP
 # ============ 可配置项 ============
 BASE_DIR = Path(__file__).resolve().parent  # 项目根目录（.env、progress.json 都相对它定位）
 BASE_URL = "https://api.deepseek.com"
-MODEL = "deepseek-chat"  # 通用对话模型；想用推理模型改为 deepseek-reasoner
+MODEL = "deepseek-flash"  # DeepSeek-V4.1-Flash（官方当前模型名；旧名 deepseek-chat 已下线）
 MAX_HISTORY_TURNS = 10  # 最多保留的对话轮数，超出后丢弃最旧的轮次
 MAX_TOOL_ROUNDS = 5  # 单轮对话最多允许的连续工具调用次数，防止模型异常时死循环
 MAX_TOOL_RESULT_CHARS = 8000  # 单条工具结果写入历史的最大字符数，防止上下文膨胀
